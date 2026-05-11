@@ -1,0 +1,55 @@
+name: CI 314551140
+
+on:
+  push:
+    branches:
+      - '**'
+
+permissions:
+  contents: read
+  checks: write
+
+jobs:
+  quality-checks:
+    name: Typecheck, format, and test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: TypeScript typecheck
+        run: npm run typecheck
+
+      - name: Prettier check
+        run: npm run format:check
+
+      - name: Test with JUnit report
+        run: npm run test -- --reporter=default --reporter=junit --outputFile.junit=test-results/junit.xml
+
+      - name: Publish test report
+        uses: mikepenz/action-junit-report@v6
+        if: success() || failure()
+        with:
+          report_paths: test-results/junit.xml
+          check_name: Vitest Test Report
+          detailed_summary: true
+          require_tests: true
+          fail_on_failure: true
+
+      - name: Upload test report artifact
+        uses: actions/upload-artifact@v4
+        if: success() || failure()
+        with:
+          name: vitest-junit-report
+          path: test-results/junit.xml
+          if-no-files-found: ignore
